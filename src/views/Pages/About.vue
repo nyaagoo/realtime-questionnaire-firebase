@@ -1,46 +1,157 @@
 <template lang="pug">
   .about
-    h1 This is an about page
-    button(v-on:click="incrementStoreCounter()") Add 100
-    p {{storeCounter}}
-    button(v-on:click="incrementStoreCounter1()") Add 100
-    p {{storeCounter1}}
+    h1 現在の質問
+    h2 {{question.title}}
+    .question-table
+      .question-row-label
+        .question-column-title タイトル
+        .question-column 画像
+        .question-column.label-yes Yes
+        .question-column.label-no No
+        .question-column アクション
+      .question-row(v-for="q in questions" :key="q.title")
+        .question-column-title {{q.title}}
+        .question-column
+          img(:src="q.img" height=24 width=24)
+        .question-column.label-yes {{ q.yes }}
+        .question-column.label-no {{ q.no }}
+        .question-column
+          button(@click="updateCurrent(q.id)") 更新
+    .add-question-container
+      input(v-model="title" placeholder="質問タイトル")
+      input(v-model="imgUrl" placeholder="画像URL(省略可能)")
+      button(@click="addQuestion()") 追加
 </template>
 
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
-import { counter, counter1 } from "@/store/index.ts";
+import * as firebase from "firebase/app";
 
 @Component
 export default class HelloWorld extends Vue {
-  counter: number = 0;
-  get storeCounter() {
-    return counter.incrementCounter;
+  currentQuestionId: string = "";
+  title: string = "";
+  imgUrl: string = "";
+  question: {
+    id: string;
+    title: string;
+    img: string;
+    no: number;
+    yes: number;
+  } = {
+    id: "",
+    title: "",
+    img: "",
+    yes: 0,
+    no: 0
+  };
+  questions: {
+    id: string;
+    title: string;
+    img: string;
+    no: number;
+    yes: number;
+  }[] = [];
+
+  created() {
+    firebase
+      .firestore()
+      .collection("questions")
+      .doc("currentQuestion")
+      .onSnapshot(doc => {
+        this.currentQuestionId = doc.data()!.id;
+        this.fetchCurrentQuestion();
+      });
+
+    firebase
+      .firestore()
+      .collection("votes")
+      .onSnapshot(docs => {
+        this.questions = [];
+        docs.forEach(doc => {
+          const question = {
+            id: doc.id,
+            title: doc.data()!.title,
+            img: doc.data()!.img,
+            yes: doc.data()!.yes,
+            no: doc.data()!.no
+          };
+          this.questions.push(question);
+        });
+      });
   }
-  get storeCounter1() {
-    return counter1.incrementCounter;
+
+  fetchCurrentQuestion() {
+    firebase
+      .firestore()
+      .collection("votes")
+      .doc(this.currentQuestionId)
+      .get()
+      .then(doc => {
+        const question = {
+          id: doc.id,
+          title: doc.data()!.title,
+          img: doc.data()!.img,
+          yes: doc.data()!.yes,
+          no: doc.data()!.no
+        };
+        this.question = question;
+      });
   }
-  incrementStoreCounter() {
-    counter.increment100();
+
+  updateCurrent(docId: string) {
+    firebase
+      .firestore()
+      .collection("questions")
+      .doc("currentQuestion")
+      .update({ id: docId });
   }
-  incrementStoreCounter1() {
-    counter1.increment100();
+
+  addQuestion() {
+    firebase
+      .firestore()
+      .collection("votes")
+      .add({
+        title: this.title,
+        img:
+          this.imgUrl ||
+          "https://realtime-ias.web.app/mark_question.png",
+        yes: 0,
+        no: 0
+      });
   }
 }
 </script>
 
 <style scoped lang="stylus">
-h3
-  margin 40px 0 0
+.about
+  width 600px
+  margin auto
 
-ul
-  list-style-type none
-  padding 0
+.question-row-label
+  display flex
+  justify-content center
+  margin 8px
+  border-bottom 2px solid #cccccc
 
-li
-  display inline-block
-  margin 0 10px
+.question-row 
+  display flex
+  justify-content center
+  margin 8px
+  border-bottom 2px solid #cccccc
 
-a
-  color #42b983
+.question-column-title
+  width: 240px;
+
+.question-column 
+  width 120px
+
+.label-yes 
+  color #0066B5
+  font-size 18px
+
+.label-no
+  color #C9242A
+  font-size 18px
+
 </style>
