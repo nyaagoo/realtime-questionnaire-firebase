@@ -1,4 +1,4 @@
-# vue-my-template
+# realtime-questionnaire-firebase
 
 Vue + Firestore リアルタイムアンケートをさくっと作った
 
